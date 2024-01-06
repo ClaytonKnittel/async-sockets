@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { DeepReadonly } from "ts-essentials";
 import { v4 as uuidv4 } from "uuid";
 
 import {
@@ -140,9 +141,8 @@ interface CallListenerInfo<
 > {
   type: "call";
   callback: (
-    resolve: (status: ResponseStatus<EventName, EmitEvents>) => void,
     ...args: Parameters<ListenEvents[ToReqEventName<EventName>]>
-  ) => void;
+  ) => Promise<DeepReadonly<ResponseStatus<EventName, EmitEvents>>>;
 }
 
 /**
@@ -194,13 +194,8 @@ interface ResponseMessageInfo<
   EventName extends CallResponseEvents<ListenEvents, EmitEvents>,
 > {
   timeoutId: NodeJS.Timeout;
-  callback: (status: ResponseStatus<EventName, ListenEvents>) => void;
+  resolve: (status: ResponseStatus<EventName, ListenEvents>) => void;
 }
-
-export type ResponseCallback<
-  EventName extends keyof ToResponseEvents<ListenEvents> & string,
-  ListenEvents extends EventsMap,
-> = (status: ResponseStatus<EventName, ListenEvents>) => void;
 
 export class AsyncSocketContext<
   ListenEvents extends EventsMap,
@@ -255,7 +250,7 @@ export class AsyncSocketContext<
     callback(...message.args);
   }
 
-  private handleCall(message: CallMessage<unknown[]>) {
+  private async handleCall(message: CallMessage<unknown[]>) {
     const event_info = this.listeners.get(message.event);
     if (event_info === undefined) {
       console.log("Unknown call event:", message.event);
@@ -266,24 +261,19 @@ export class AsyncSocketContext<
       return;
     }
 
-    const callback: (
-      resolve: (status: Status<unknown>) => void,
-      ...args: any
-    ) => void = event_info.callback;
-    callback(
-      (status) => {
-        console.log(`responding to ${message.event} with`, status);
-        const response: ResponseMessage<unknown> = {
-          uuid: message.uuid,
-          status,
-        };
-        this.sendMessage({ response });
-      },
-      ...message.args,
-    );
+    const callback: (...args: any) => Promise<Status<unknown>> =
+      event_info.callback;
+    const status = await callback(...message.args);
+
+    console.log(`responding to ${message.event} with`, status);
+    const response: ResponseMessage<unknown> = {
+      uuid: message.uuid,
+      status,
+    };
+    this.sendMessage({ response });
   }
 
-  private handleResponse({ uuid, status }: ResponseMessage<unknown>) {
+  private async handleResponse({ uuid, status }: ResponseMessage<unknown>) {
     console.log(uuid, status);
     if (!this.outstanding_calls.has(uuid)) {
       console.log(`Error: received event with unknown uuid: ${uuid}`);
@@ -298,7 +288,7 @@ export class AsyncSocketContext<
       CallResponseEvents<ListenEvents, EmitEvents>
     >;
     clearTimeout(message_info.timeoutId);
-    message_info.callback(
+    message_info.resolve(
       status as ResponseStatus<
         CallResponseEvents<ListenEvents, EmitEvents>,
         ListenEvents
@@ -306,7 +296,7 @@ export class AsyncSocketContext<
     );
   }
 
-  private onMessage(event: MessageEvent) {
+  private async onMessage(event: MessageEvent) {
     const message = this.parseMessage(event.data);
     console.log("message:", message);
 
@@ -392,7 +382,7 @@ export class AsyncSocketContext<
     event_name: string,
     uuid: string,
     timeout_ms: number,
-    callback: ResponseCallback<EventName, ListenEvents>,
+    callback: (response: ResponseStatus<EventName, ListenEvents>) => void,
   ): NodeJS.Timeout {
     return setTimeout(() => {
       this.outstanding_calls.delete(uuid);
@@ -433,39 +423,37 @@ export class AsyncSocketContext<
     });
   }
 
-  call<EventName extends CallResponseEvents<ListenEvents, EmitEvents>>(
+  async call<EventName extends CallResponseEvents<ListenEvents, EmitEvents>>(
     event_name: EventName,
-    ...args: [
-      ...ReqParams<EventName, EmitEvents>,
-      ResponseCallback<EventName, ListenEvents>,
-    ]
-  ): void {
-    console.log(`calling ${event_name} with`, ...args.slice(0, -1));
-    const callback = args[args.length - 1] as ResponseCallback<
-      EventName,
-      ListenEvents
-    >;
-    const call_args = args.slice(0, -1) as ReqParams<EventName, EmitEvents>;
+    ...args: ReqParams<EventName, EmitEvents>
+  ): Promise<ResponseStatus<EventName, ListenEvents>> {
+    console.log(`calling ${event_name} with`, args);
 
-    const uuid = uuidv4();
-    const timeoutId = this.addTimeout(event_name, uuid, this.timeout, callback);
+    return new Promise((resolve) => {
+      const uuid = uuidv4();
+      const timeoutId = this.addTimeout(
+        event_name,
+        uuid,
+        this.timeout,
+        resolve,
+      );
 
-    this.outstanding_calls.set(uuid, { timeoutId, callback });
+      this.outstanding_calls.set(uuid, { timeoutId, resolve });
 
-    const call: CallMessage<ReqParams<EventName, EmitEvents>> = {
-      event: event_name,
-      uuid,
-      args: call_args,
-    };
-    this.sendMessage({ call });
+      const call: CallMessage<ReqParams<EventName, EmitEvents>> = {
+        event: event_name,
+        uuid,
+        args,
+      };
+      this.sendMessage({ call });
+    });
   }
 
   respond<EventName extends CallResponseEvents<EmitEvents, ListenEvents>>(
     event_name: EventName,
     callback: (
-      resolve: ResponseCallback<EventName, EmitEvents>,
       ...args: ReqParams<EventName, ListenEvents>
-    ) => void,
+    ) => Promise<DeepReadonly<ResponseStatus<EventName, ListenEvents>>>,
   ): void {
     const alias = this.listeners as Map<
       EventName,
