@@ -1,0 +1,18 @@
+[package]
+name = "async-socket-macros"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+async-socket-internals = { path = "../async-socket-internals" }
+proc-macro-error = { version = "1", default-features = false }
+proc-macro2 = "1.0"
+quote = "1.0"
+serde = {version = "1.0", features = ["derive"] }
+syn = { version = "2.0", features = ["full"] }
+
+[dev-dependencies]
+serde_json = "1.0"
