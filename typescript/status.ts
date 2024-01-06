@@ -1,8 +1,8 @@
 export enum StatusCode {
-  Ok = "Ok",
+  Ok = 'Ok',
 
-  MessageTimeout = "MessageTimeout",
-  NotFound = "NotFound",
+  MessageTimeout = 'MessageTimeout',
+  NotFound = 'NotFound',
 }
 
 export interface OkStatusT<T = null> {
@@ -26,7 +26,7 @@ export interface SerializedStatus {
 
 export function makeErrStatus(
   status: ErrStatusCode,
-  message: string,
+  message: string
 ): ErrStatusT {
   return { status, message };
 }
@@ -34,7 +34,7 @@ export function makeErrStatus(
 export function statusFromError<E extends Error, T>(
   error: E | null,
   code: ErrStatusCode,
-  value_on_success: T,
+  value_on_success: T
 ): Status<T> {
   return error === null
     ? makeOkStatus<T>(value_on_success)
@@ -57,27 +57,27 @@ export function isOk<T>(status: Status<T>): status is OkStatusT<T> {
 export function isStatus(status: unknown): status is Status<unknown> {
   return (
     status !== null &&
-    typeof status === "object" &&
-    "status" in status &&
-    typeof status.status === "string" &&
+    typeof status === 'object' &&
+    'status' in status &&
+    typeof status.status === 'string' &&
     status.status in StatusCode &&
-    (((status.status as StatusCode) === StatusCode.Ok && "value" in status) ||
-      ("message" in status && typeof status.message === "string"))
+    (((status.status as StatusCode) === StatusCode.Ok && 'value' in status) ||
+      ('message' in status && typeof status.message === 'string'))
   );
 }
 
 export function isSerializedStatus(
-  status: unknown,
+  status: unknown
 ): status is SerializedStatus {
   return (
     status !== null &&
-    typeof status === "object" &&
-    "status" in status &&
-    "payload" in status &&
-    typeof status.status === "string" &&
+    typeof status === 'object' &&
+    'status' in status &&
+    'payload' in status &&
+    typeof status.status === 'string' &&
     status.status in StatusCode &&
     ((status.status as StatusCode) === StatusCode.Ok ||
-      typeof status.payload === "string")
+      typeof status.payload === 'string')
   );
 }
 
@@ -90,7 +90,7 @@ export function serializeStatus(status: Status<unknown>): SerializedStatus {
 }
 
 export function deserializeStatus(
-  status: SerializedStatus,
+  status: SerializedStatus
 ): Status<unknown> | null {
   if (status.status === StatusCode.Ok) {
     return { status: status.status, value: status.payload };

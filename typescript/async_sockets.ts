@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { DeepReadonly } from "ts-essentials";
-import { v4 as uuidv4 } from "uuid";
+import { DeepReadonly } from 'ts-essentials';
+import { v4 as uuidv4 } from 'uuid';
 
 import {
   Status,
@@ -10,7 +10,7 @@ import {
   isStatus,
   makeErrStatus,
   serializeStatus,
-} from "./status";
+} from './status';
 
 interface EventsMap {
   [event_name: string]: any;
@@ -39,42 +39,42 @@ interface SocketMessage {
 }
 
 function isEmitMessage<Params extends unknown[]>(
-  message: unknown,
+  message: unknown
 ): message is EmitMessage<Params> {
   return (
     message !== null &&
-    typeof message === "object" &&
-    "event" in message &&
-    typeof message.event === "string" &&
-    "args" in message &&
+    typeof message === 'object' &&
+    'event' in message &&
+    typeof message.event === 'string' &&
+    'args' in message &&
     Array.isArray(message.args)
   );
 }
 
 function isCallMessage<Params extends unknown[]>(
-  message: unknown,
+  message: unknown
 ): message is CallMessage<Params> {
   return (
     message !== null &&
-    typeof message === "object" &&
-    "event" in message &&
-    typeof message.event === "string" &&
-    "uuid" in message &&
-    typeof message.uuid === "string" &&
-    "args" in message &&
+    typeof message === 'object' &&
+    'event' in message &&
+    typeof message.event === 'string' &&
+    'uuid' in message &&
+    typeof message.uuid === 'string' &&
+    'args' in message &&
     Array.isArray(message.args)
   );
 }
 
 function isResponseMessage<Params extends unknown[]>(
-  message: unknown,
+  message: unknown
 ): message is ResponseMessage<Params> {
   return (
     message !== null &&
-    typeof message === "object" &&
-    "uuid" in message &&
-    typeof message.uuid === "string" &&
-    "status" in message &&
+    typeof message === 'object' &&
+    'uuid' in message &&
+    typeof message.uuid === 'string' &&
+    'status' in message &&
     isStatus(message.status)
   );
 }
@@ -82,10 +82,10 @@ function isResponseMessage<Params extends unknown[]>(
 function isMessage(message: unknown): message is SocketMessage {
   return (
     message !== null &&
-    typeof message === "object" &&
-    (("emit" in message && isEmitMessage(message.emit)) ||
-      ("call" in message && isCallMessage(message.call)) ||
-      ("response" in message && isResponseMessage(message.response)))
+    typeof message === 'object' &&
+    (('emit' in message && isEmitMessage(message.emit)) ||
+      ('call' in message && isCallMessage(message.call)) ||
+      ('response' in message && isResponseMessage(message.response)))
   );
 }
 
@@ -130,7 +130,7 @@ interface EmitListenerInfo<
   Events extends EventsMap,
   EventName extends keyof Events & string,
 > {
-  type: "emit";
+  type: 'emit';
   callback: Events[EventName];
 }
 
@@ -139,9 +139,9 @@ interface CallListenerInfo<
   EmitEvents extends EventsMap,
   EventName extends CallResponseEvents<EmitEvents, ListenEvents>,
 > {
-  type: "call";
+  type: 'call';
   callback: (
-    ...args: Parameters<ListenEvents[ToReqEventName<EventName>]>
+    ...args: ReqParams<EventName, ListenEvents>
   ) => Promise<DeepReadonly<ResponseStatus<EventName, EmitEvents>>>;
 }
 
@@ -232,17 +232,17 @@ export class AsyncSocketContext<
   }
 
   private onOpen() {
-    console.log("websocket opened");
+    console.log('websocket opened');
   }
 
   private handleEmit(message: EmitMessage<unknown[]>) {
     const event_info = this.listeners.get(message.event);
     if (event_info === undefined) {
-      console.log("Unknown emit event:", message.event);
+      console.log('Unknown emit event:', message.event);
       return;
     }
-    if (event_info.type !== "emit") {
-      console.log("Received emit for call/response message:", message.event);
+    if (event_info.type !== 'emit') {
+      console.log('Received emit for call/response message:', message.event);
       return;
     }
 
@@ -253,11 +253,11 @@ export class AsyncSocketContext<
   private async handleCall(message: CallMessage<unknown[]>) {
     const event_info = this.listeners.get(message.event);
     if (event_info === undefined) {
-      console.log("Unknown call event:", message.event);
+      console.log('Unknown call event:', message.event);
       return;
     }
-    if (event_info.type !== "call") {
-      console.log("Received call for emit message:", message.event);
+    if (event_info.type !== 'call') {
+      console.log('Received call for emit message:', message.event);
       return;
     }
 
@@ -281,7 +281,7 @@ export class AsyncSocketContext<
     }
 
     const message_info = this.outstanding_calls.get(
-      uuid,
+      uuid
     ) as ResponseMessageInfo<
       ListenEvents,
       EmitEvents,
@@ -292,37 +292,37 @@ export class AsyncSocketContext<
       status as ResponseStatus<
         CallResponseEvents<ListenEvents, EmitEvents>,
         ListenEvents
-      >,
+      >
     );
   }
 
   private async onMessage(event: MessageEvent) {
     const message = this.parseMessage(event.data);
-    console.log("message:", message);
+    console.log('message:', message);
 
     if (!isMessage(message)) {
-      console.log("ill-formed message:", message);
+      console.log('ill-formed message:', message);
       return;
     }
 
     if (message.emit !== undefined) {
-      console.log("handling emit");
+      console.log('handling emit');
       this.handleEmit(message.emit);
     } else if (message.call !== undefined) {
-      console.log("handling call");
+      console.log('handling call');
       this.handleCall(message.call);
     } else if (message.response !== undefined) {
-      console.log("handling response");
+      console.log('handling response');
       this.handleResponse(message.response);
     }
   }
 
   private onError() {
-    console.log("websocket closed via error");
+    console.log('websocket closed via error');
   }
 
   private onClose() {
-    console.log("websocket closed");
+    console.log('websocket closed');
     this.periodicallyTryReconnect();
   }
 
@@ -355,12 +355,12 @@ export class AsyncSocketContext<
         }
 
         return value;
-      }),
+      })
     );
   }
 
   private parseMessage(data: unknown): unknown {
-    if (typeof data !== "string") {
+    if (typeof data !== 'string') {
       return null;
     }
     try {
@@ -382,7 +382,7 @@ export class AsyncSocketContext<
     event_name: string,
     uuid: string,
     timeout_ms: number,
-    callback: (response: ResponseStatus<EventName, ListenEvents>) => void,
+    callback: (response: ResponseStatus<EventName, ListenEvents>) => void
   ): NodeJS.Timeout {
     return setTimeout(() => {
       this.outstanding_calls.delete(uuid);
@@ -392,8 +392,8 @@ export class AsyncSocketContext<
           StatusCode.MessageTimeout,
           `Async socket call ${event_name} timed out after ${
             timeout_ms / 1000
-          } second${timeout_ms === 1000 ? "" : "s"}`,
-        ) as ResponseStatus<EventName, ListenEvents>,
+          } second${timeout_ms === 1000 ? '' : 's'}`
+        ) as ResponseStatus<EventName, ListenEvents>
       );
     }, timeout_ms);
   }
@@ -411,14 +411,14 @@ export class AsyncSocketContext<
 
   on<EventName extends OnEventNames<ListenEvents, EmitEvents>>(
     event_name: EventName,
-    callback: ListenEvents[EventName],
+    callback: ListenEvents[EventName]
   ) {
     const alias = this.listeners as Map<
       EventName,
       ListenerInfo<ListenEvents, EmitEvents, EventName>
     >;
     alias.set(event_name, {
-      type: "emit",
+      type: 'emit',
       callback,
     });
   }
@@ -435,7 +435,7 @@ export class AsyncSocketContext<
         event_name,
         uuid,
         this.timeout,
-        resolve,
+        resolve
       );
 
       this.outstanding_calls.set(uuid, { timeoutId, resolve });
@@ -453,14 +453,14 @@ export class AsyncSocketContext<
     event_name: EventName,
     callback: (
       ...args: ReqParams<EventName, ListenEvents>
-    ) => Promise<DeepReadonly<ResponseStatus<EventName, ListenEvents>>>,
+    ) => Promise<DeepReadonly<ResponseStatus<EventName, EmitEvents>>>
   ): void {
     const alias = this.listeners as Map<
       EventName,
       CallListenerInfo<ListenEvents, EmitEvents, EventName>
     >;
     alias.set(event_name, {
-      type: "call",
+      type: 'call',
       callback,
     });
   }
