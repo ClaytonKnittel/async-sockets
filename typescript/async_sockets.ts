@@ -304,10 +304,6 @@ export class AsyncSocketContext<
 
   private async onMessage(event: MessageEvent) {
     const message = this.parseMessage(event.data);
-    if (this.verbose) {
-      console.log('message:', message);
-    }
-
     if (!isMessage(message)) {
       console.log('ill-formed message:', message);
       return;
