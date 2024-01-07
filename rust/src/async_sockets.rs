@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::marker::PhantomData;
+use std::net::{Ipv6Addr, SocketAddrV6};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -360,7 +361,14 @@ impl<
         ws.on_upgrade(|websocket| Self::handle_user_session(websocket, globals))
       });
 
-    warp::serve(websocket).run(([0, 0, 0, 0], port)).await;
+    warp::serve(websocket)
+      .run(SocketAddrV6::new(
+        Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0),
+        port,
+        0,
+        0,
+      ))
+      .await;
   }
 
   async fn process_global_messages(
@@ -496,9 +504,9 @@ impl<
           })?;
         Ok(None)
       }
-      Err(_) => Err(Status::DeserializeFailed(
-        "Unrecognized message format".to_string(),
-      )),
+      Err(m) => Err(Status::DeserializeFailed(format!(
+        "Unrecognized message format: {m}"
+      ))),
     }
   }
 }
