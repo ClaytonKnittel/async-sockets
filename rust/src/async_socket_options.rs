@@ -5,6 +5,7 @@ pub struct AsyncSocketOptions {
   pub path: String,
   pub port: u16,
   pub timeout: Duration,
+  pub verbose: bool,
 }
 
 impl AsyncSocketOptions {
@@ -13,6 +14,7 @@ impl AsyncSocketOptions {
       path: "test".to_string(),
       port: 2000,
       timeout: Duration::from_secs(1),
+      verbose: false,
     }
   }
 
@@ -29,6 +31,13 @@ impl AsyncSocketOptions {
 
   pub fn with_timeout(self, timeout: Duration) -> Self {
     Self { timeout, ..self }
+  }
+
+  pub fn with_verbose(self) -> Self {
+    Self {
+      verbose: true,
+      ..self
+    }
   }
 }
 

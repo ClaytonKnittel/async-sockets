@@ -397,10 +397,10 @@ impl<
         ChannelMessage::TriggerResponse(ResponseMessage { uuid, status }) => {
           if let Some(outstanding_call) = outstanding_calls.remove(&uuid) {
             if let Err(error) = outstanding_call.tx.send(status) {
-              println!("Warning: receiver dropped after receiving async response: {error}");
+              eprintln!("Warning: receiver dropped after receiving async response: {error}");
             }
           } else {
-            println!("Error: received response for unknown call {uuid}")
+            eprintln!("Error: received response for unknown call {uuid}")
           }
         }
       }
@@ -426,7 +426,9 @@ impl<
     socket_rx
       .take_while(|msg| {
         if let Ok(msg) = &msg {
-          println!("Message: {msg:?}");
+          if globals.options.verbose {
+            println!("Received message: {msg:?}");
+          }
           if msg.is_close() {
             return future::ready(false);
           }
@@ -443,7 +445,7 @@ impl<
           match result {
             Ok(Some(message)) => {
               if let Err(error) = tx.send(ChannelMessage::SendMessage(message)) {
-                println!("Failed to send message over channel: {error}");
+                eprintln!("Failed to send message over channel: {error}");
               }
             }
             Ok(None) => {}
@@ -479,7 +481,9 @@ impl<
         uuid,
         client_call_events,
       })) => {
-        println!("Call event: {uuid}");
+        if globals.options.verbose {
+          println!("Call event: {uuid}");
+        }
         let status = (globals.call_event_callback)(
           client_call_events,
           AsyncSocketContext::new(tx, globals.options.timeout),
@@ -489,13 +493,17 @@ impl<
         let msg: SocketMessage<Empty, Empty, Status<ClientResp>> =
           SocketMessage::Response(ResponseMessage { uuid, status });
 
-        println!("Responding with {}", serde_json::to_string(&msg).unwrap());
+        if globals.options.verbose {
+          println!("Responding with {}", serde_json::to_string(&msg).unwrap());
+        }
         let serialized =
           serde_json::to_string(&msg).map_err(|err| Status::SerializeFailed(err.to_string()))?;
         Ok(Some(Message::text(serialized)))
       }
       Ok(SocketMessage::Response(response)) => {
-        println!("Response: {}", response.uuid);
+        if globals.options.verbose {
+          println!("Response: {}", response.uuid);
+        }
         tx.send(ChannelMessage::TriggerResponse(response))
           .map_err(|err| {
             Status::MessageQueueError(format!(
