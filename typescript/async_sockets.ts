@@ -205,6 +205,7 @@ export class AsyncSocketContext<
   private socket: WebSocket;
   private timeout: number;
   private verbose: boolean;
+  private isOpen: boolean;
 
   /**
    * A map of event names to the corresponding call/response or emit listeners.
@@ -224,6 +225,7 @@ export class AsyncSocketContext<
 
   constructor(url: string, verbose?: boolean) {
     this.url = url;
+    this.isOpen = false;
     this.socket = new WebSocket(url, ['websocket', 'polling']);
     this.initializeWebSocket();
     this.timeout = 1000;
@@ -233,10 +235,23 @@ export class AsyncSocketContext<
     this.outstanding_calls = new Map();
   }
 
+  async awaitOpen(): Promise<void> {
+    return new Promise((resolve) => {
+      if (this.isOpen) {
+        resolve();
+      } else {
+        this.socket.addEventListener('open', () => {
+          resolve();
+        });
+      }
+    });
+  }
+
   private onOpen() {
     if (this.verbose) {
       console.log('websocket opened');
     }
+    this.isOpen = true;
   }
 
   private handleEmit(message: EmitMessage<unknown[]>) {
