@@ -33,11 +33,8 @@ impl AsyncSocketOptions {
     Self { timeout, ..self }
   }
 
-  pub fn with_verbose(self) -> Self {
-    Self {
-      verbose: true,
-      ..self
-    }
+  pub fn with_verbose(self, verbose: bool) -> Self {
+    Self { verbose, ..self }
   }
 }
 
