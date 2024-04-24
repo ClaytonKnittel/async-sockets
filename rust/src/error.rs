@@ -22,6 +22,9 @@ pub enum Status<T = Empty> {
   RemoveMessageQueueError(String),
   RecvError(String),
   Timeout(String),
+
+  /// Internal server errors.
+  InternalServerError(String),
 }
 
 impl<T> Status<T> {
@@ -34,6 +37,7 @@ impl<T> Status<T> {
       Status::RemoveMessageQueueError(msg) => Status::RemoveMessageQueueError(msg),
       Status::RecvError(msg) => Status::RecvError(msg),
       Status::Timeout(msg) => Status::Timeout(msg),
+      Status::InternalServerError(msg) => Status::InternalServerError(msg),
     }
   }
 }
@@ -63,6 +67,9 @@ impl<T: std::fmt::Display> std::fmt::Display for Status<T> {
       }
       Status::Timeout(message) => {
         write!(f, "Timeout: {message}")
+      }
+      Status::InternalServerError(message) => {
+        write!(f, "Internal server error: {message}")
       }
     }
   }
