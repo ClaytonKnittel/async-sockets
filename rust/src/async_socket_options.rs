@@ -1,20 +1,31 @@
-use std::time::Duration;
+use std::{
+  net::{SocketAddr, SocketAddrV4},
+  time::Duration,
+};
+
+#[derive(Clone, Debug)]
+pub struct AsyncSocketSecurity {
+  pub cert_path: String,
+  pub key_path: String,
+}
 
 #[derive(Clone, Debug)]
 pub struct AsyncSocketOptions {
   pub path: String,
-  pub port: u16,
+  pub bind_addr: SocketAddr,
   pub timeout: Duration,
   pub verbose: bool,
+  pub security: Option<AsyncSocketSecurity>,
 }
 
 impl AsyncSocketOptions {
   pub fn new() -> Self {
     Self {
       path: "test".to_string(),
-      port: 2000,
+      bind_addr: SocketAddr::V4(SocketAddrV4::new([127, 0, 0, 1].into(), 2000)),
       timeout: Duration::from_secs(1),
       verbose: false,
+      security: None,
     }
   }
 
@@ -25,8 +36,8 @@ impl AsyncSocketOptions {
     }
   }
 
-  pub fn with_port(self, port: u16) -> Self {
-    Self { port, ..self }
+  pub fn with_bind_addr(self, bind_addr: SocketAddr) -> Self {
+    Self { bind_addr, ..self }
   }
 
   pub fn with_timeout(self, timeout: Duration) -> Self {
@@ -35,6 +46,13 @@ impl AsyncSocketOptions {
 
   pub fn with_verbose(self, verbose: bool) -> Self {
     Self { verbose, ..self }
+  }
+
+  pub fn with_security(self, security: AsyncSocketSecurity) -> Self {
+    Self {
+      security: Some(security),
+      ..self
+    }
   }
 }
 

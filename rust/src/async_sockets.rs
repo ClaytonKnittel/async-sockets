@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 use std::marker::PhantomData;
-use std::net::{Ipv6Addr, SocketAddrV6};
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::async_socket_options::AsyncSocketOptions;
+use crate::async_socket_options::{AsyncSocketOptions, AsyncSocketSecurity};
 use crate::error::{AsyncSocketResult, Status};
 use crate::util::Empty;
 use crate::uuid::Uuid;
@@ -323,7 +322,10 @@ impl<
   ///   let server = ::async_sockets::AsyncSocket::new(
   ///     ::async_sockets::AsyncSocketOptions::new()
   ///       .with_path("test")
-  ///       .with_port(2345)
+  ///       .with_bind_addr(std::net::SocketAddr::V4(std::net::SocketAddrV4::new(
+  ///         [127, 0, 0, 1].into(),
+  ///         2345,
+  ///       )))
   ///       .with_timeout(::std::time::Duration::from_secs(10)),
   ///     handle_connect_event,
   ///     handle_emit_event,
@@ -352,7 +354,8 @@ impl<
   /// Starts the Async Socket server, which will run the server forever on the
   /// current thread.
   pub async fn start_server(self) {
-    let port = self.globals.options.port;
+    let bind_addr = self.globals.options.bind_addr;
+    let security = self.globals.options.security.clone();
 
     let websocket = warp::path(self.globals.options.path.clone())
       .and(warp::ws())
@@ -361,14 +364,22 @@ impl<
         ws.on_upgrade(|websocket| Self::handle_user_session(websocket, globals))
       });
 
-    warp::serve(websocket)
-      .run(SocketAddrV6::new(
-        Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0),
-        port,
-        0,
-        0,
-      ))
-      .await;
+    let server = warp::serve(websocket);
+
+    match security {
+      Some(AsyncSocketSecurity {
+        cert_path,
+        key_path,
+      }) => {
+        server
+          .tls()
+          .cert_path(cert_path)
+          .key_path(key_path)
+          .run(bind_addr)
+          .await
+      }
+      None => server.run(bind_addr).await,
+    };
   }
 
   async fn process_global_messages(
