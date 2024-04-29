@@ -225,11 +225,11 @@ export class AsyncSocketContext<
 
   constructor(url: string, verbose?: boolean) {
     this.url = url;
-    this.isOpen = false;
     this.socket = new WebSocket(url);
-    this.initializeWebSocket();
+    this.isOpen = false;
     this.timeout = 1000;
     this.verbose = verbose ?? false;
+    this.initializeWebSocket();
 
     this.listeners = new Map();
     this.outstanding_calls = new Map();
@@ -335,10 +335,12 @@ export class AsyncSocketContext<
 
   private onError() {
     console.error('websocket closed via error');
+    this.isOpen = false;
   }
 
   private onClose() {
     console.log('websocket closed');
+    this.isOpen = false;
     this.periodicallyTryReconnect();
   }
 
@@ -348,6 +350,7 @@ export class AsyncSocketContext<
     };
     this.socket.onmessage = (event) => {
       this.onMessage(event);
+      return false;
     };
     this.socket.onerror = () => {
       this.onError();
@@ -405,7 +408,7 @@ export class AsyncSocketContext<
 
       callback(
         makeErrStatus(
-          StatusCode.MessageTimeout,
+          StatusCode.Timeout,
           `Async socket call ${eventName} timed out after ${
             timeoutMs / 1000
           } second${timeoutMs === 1000 ? '' : 's'}`

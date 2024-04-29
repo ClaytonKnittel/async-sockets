@@ -1,8 +1,20 @@
 export enum StatusCode {
+  /* eslint-disable @typescript-eslint/naming-convention */
   Ok = 'Ok',
 
-  MessageTimeout = 'MessageTimeout',
-  NotFound = 'NotFound',
+  // Serialization errors.
+  SerializeFailed = 'SerializeFailed',
+  DeserializeFailed = 'DeserializeFailed',
+
+  // Async messaging errors.
+  MessageQueueError = 'MessageQueueError',
+  RemoveMessageQueueError = 'RemoveMessageQueueError',
+  RecvError = 'RecvError',
+  Timeout = 'Timeout',
+
+  // Internal server errors.
+  InternalServerError = 'InternalServerError',
+  /* eslint-enable @typescript-eslint/naming-convention */
 }
 
 export interface OkStatusT<T = null> {
@@ -34,10 +46,10 @@ export function makeErrStatus(
 export function statusFromError<E extends Error, T>(
   error: E | null,
   code: ErrStatusCode,
-  value_on_success: T
+  valueOnSuccess: T
 ): Status<T> {
   return error === null
-    ? makeOkStatus<T>(value_on_success)
+    ? makeOkStatus<T>(valueOnSuccess)
     : makeErrStatus(code, error.message);
 }
 
