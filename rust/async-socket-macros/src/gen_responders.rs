@@ -28,11 +28,20 @@ fn variant_ser_struct(variant: &Variant) -> TokenStream2 {
     ..field.clone()
   });
 
-  quote! {
-    #[derive(::serde::Serialize)]
-    #[serde(deny_unknown_fields)]
-    struct AsyncSocketInternalRespondEvent<'a> {
-      #ref_struct_fields
+  if ref_struct_fields.is_empty() {
+    quote! {
+      #[derive(::serde::Serialize)]
+      #[serde(deny_unknown_fields)]
+      struct AsyncSocketInternalRespondEvent {
+      }
+    }
+  } else {
+    quote! {
+      #[derive(::serde::Serialize)]
+      #[serde(deny_unknown_fields)]
+      struct AsyncSocketInternalRespondEvent<'a> {
+        #ref_struct_fields
+      }
     }
   }
 }
